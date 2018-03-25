@@ -1,8 +1,11 @@
 package ru.track.json;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -60,9 +63,20 @@ public class JsonWriter {
     @NotNull
     private static String toJsonArray(@NotNull Object object) {
         int length = Array.getLength(object);
+
         // TODO: implement!
 
-        return null;
+        StringBuilder result = new StringBuilder();
+        result.append("[");
+        for(int i=0; i<length;i++)
+        {
+            result.append(toJson(Array.get(object, i)));
+            if (i!=length-1) {
+                result.append(",");
+            }
+        }
+        result.append("]");
+        return result.toString();
     }
 
     /**
@@ -83,8 +97,14 @@ public class JsonWriter {
     @NotNull
     private static String toJsonMap(@NotNull Object object) {
         // TODO: implement!
+        Map map = (Map) object;
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Object i: map.keySet())
+        {
+            result.put(i.toString(), toJson(map.get(i)));
 
-        return null;
+        }
+        return formatObject(result);
         // Можно воспользоваться этим методом, если сохранить все поля в новой мапе уже в строковом представлении
 //        return formatObject(stringMap);
     }
@@ -109,9 +129,33 @@ public class JsonWriter {
     private static String toJsonObject(@NotNull Object object) {
         Class clazz = object.getClass();
         // TODO: implement!
+        Map<String, String> map = new LinkedHashMap<>();
+        for(Field field : clazz.getDeclaredFields())
+        {
+            field.setAccessible(true);
+            String Name = field.getName();;
+            try {
+                if (field.getAnnotation(SerializedTo.class) != null)
+                {
+                    Name = field.getAnnotation(SerializedTo.class).value();
+                }
+
+                if (field.get(object) != null) {
+                    map.put(Name, toJson(field.get(object)));
+                }
+                else
+                {
+                    if (clazz.getAnnotation(JsonNullable.class)!=null) {
+                        map.put(Name, toJson(field.get(object)));
+                    }
+                }
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
 
 
-        return null;
+        return formatObject(map);
     }
 
     /**

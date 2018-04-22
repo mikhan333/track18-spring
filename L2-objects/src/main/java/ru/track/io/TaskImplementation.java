@@ -38,34 +38,36 @@ public final class TaskImplementation implements FileEncoder {
                 final InputStream is = new FileInputStream(fin);
                 final OutputStream os = new BufferedOutputStream(new FileOutputStream(fout));
         ) {
-            byte[] fileIn = new byte[3];
-            byte[] fileOut = new byte[4];
+            byte[] fileIn = new byte[3000];
+            byte[] fileOut = new byte[4000];
             int i=0;
 
-            int readByte =0;
-            while((readByte = is.read(fileIn, 0, 3))!=-1)
+            int readByte = 0;
+            while((readByte = is.read(fileIn, 0, 3000))!=-1)
             {
-                if (readByte==2)
-                {
-                    fileOut[0] = (byte) toBase64[((fileIn[0] & 0xFC) >> 2)];
-                    fileOut[1] = (byte) toBase64[(((fileIn[0] & 0x03) << 4) | ((fileIn[1] & 0xF0) >> 4))];
-                    fileOut[2] = (byte) toBase64[(((fileIn[1] & 0x0F) << 2))];
-                    fileOut[3] = (byte) '=';
+                int j=0, n=0;
+                for(; j < readByte - readByte%3; j+=3, n+=4) {
+                    fileOut[n] = (byte) toBase64[((fileIn[j] & 0xFC) >> 2)];
+                    fileOut[n+1] = (byte) toBase64[(((fileIn[j] & 0x03) << 4) | ((fileIn[j+1] & 0xF0) >> 4))];
+                    fileOut[n+2] = (byte) toBase64[(((fileIn[j+1] & 0x0F) << 2) | ((fileIn[j+2] & 0xC0) >> 6))];
+                    fileOut[n+3] = (byte) toBase64[((fileIn[j+2] & 0x3F))];
                 }
-                else if(readByte==1){
-                    fileOut[0] = (byte) toBase64[((fileIn[0] & 0xFC) >> 2)];
-                    fileOut[1] = (byte) toBase64[(((fileIn[0] & 0x03) << 4))];
-                    fileOut[2] = (byte) '=';
-                    fileOut[3] = (byte) '=';
+                if (readByte % 3 == 2) {
+                    fileOut[n] = (byte) toBase64[((fileIn[j] & 0xFC) >> 2)];
+                    fileOut[n+1] = (byte) toBase64[(((fileIn[j] & 0x03) << 4) | ((fileIn[j+1] & 0xF0) >> 4))];
+                    fileOut[n+2] = (byte) toBase64[(((fileIn[j+1] & 0x0F) << 2))];
+                    fileOut[n+3] = (byte) '=';
+                } else if (readByte % 3 == 1){
+                    fileOut[n] = (byte) toBase64[((fileIn[j] & 0xFC) >> 2)];
+                    fileOut[n+1] = (byte) toBase64[(((fileIn[j] & 0x03) << 4))];
+                    fileOut[n+2] = (byte) '=';
+                    fileOut[n+3] = (byte) '=';
                 }
-                else{
-                    fileOut[0] = (byte) toBase64[((fileIn[0] & 0xFC) >> 2)];
-                    fileOut[1] = (byte) toBase64[(((fileIn[0] & 0x03) << 4) | ((fileIn[1] & 0xF0) >> 4))];
-                    fileOut[2] = (byte) toBase64[(((fileIn[1] & 0x0F) << 2) | ((fileIn[2] & 0xC0) >> 6))];
-                    fileOut[3] = (byte) toBase64[((fileIn[2] & 0x3F))];
+                else {
+                    n-=4;
                 }
 
-                os.write(fileOut,0,4);
+                os.write(fileOut,0,n+4);
 
             }
 
